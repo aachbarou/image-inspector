@@ -2,78 +2,53 @@
 main.py
 
 This is the entry point (controller) for the image-inspector program.
-It only handles command-line arguments and decides which function to call.
-It does NOT contain any real image-processing logic.
+It only parses command-line arguments (via cli.py) and decides which
+function to call.  It does NOT contain any real image-processing logic;
+that lives in metadata.py and steganography.py.
 """
 
-import argparse
-
+from cli import build_parser
 from metadata import run_metadata_analysis
 from steganography import run_steganography_analysis
 from utils import save_output
 
+import os
+
 
 def main():
-    # Create the argument parser with a description shown in --help
-    parser = argparse.ArgumentParser(
-        prog="image-inspector",
-        description="A tool for inspecting images (metadata and steganography analysis)."
-    )
-
-    # Positional argument: the image file path (always required)
-    parser.add_argument(
-        "image_path",
-        help="Path to the image file you want to analyze"
-    )
-
-    # Optional flag: run metadata analysis
-    parser.add_argument(
-        "-m", "--metadata",
-        action="store_true",
-        help="Run metadata analysis on the image"
-    )
-
-    # Optional flag: run steganography analysis
-    parser.add_argument(
-        "-s", "--steganography",
-        action="store_true",
-        help="Run steganography analysis on the image"
-    )
-
-    # Optional flag: specify an output file for results
-    parser.add_argument(
-        "-o", "--output",
-        help="Optional path to save the analysis results"
-    )
-
-    # Parse the arguments given by the user
+    # Build (via cli.py) and parse the command-line arguments.
+    parser = build_parser()
     args = parser.parse_args()
 
-    # This will collect whatever results our placeholder functions return
-    results = []
-
-    # If the user chose metadata analysis, call the placeholder function
-    if args.metadata:
-        result = run_metadata_analysis(args.image_path)
-        results.append(result)
-
-    # If the user chose steganography analysis, call the placeholder function
-    if args.steganography:
-        result = run_steganography_analysis(args.image_path)
-        results.append(result)
-
-    # If the user didn't choose any analysis type, tell them how to use the tool
+    # If the user didn't choose any analysis type, show the help screen.
     if not args.metadata and not args.steganography:
         parser.print_help()
         return
 
-    # If the user specified an output file, save the results there
+    # Give a friendly error instead of a traceback when the file is missing.
+    if not os.path.isfile(args.image_path):
+        parser.error("image file not found: %s" % args.image_path)
+
+    # This will collect whatever results the analysis functions return.
+    results = []
+
+    # If the user chose metadata analysis, run it and remember the result.
+    if args.metadata:
+        results.append(run_metadata_analysis(args.image_path))
+
+    # If the user chose steganography analysis, run it and remember the result.
+    if args.steganography:
+        results.append(run_steganography_analysis(args.image_path))
+
+    # If the user specified an output file, save the results there.
     if args.output:
-        save_output(results, args.output)
+        output_path = save_output(results, args.output)
+        print("Data saved in %s" % output_path)
     else:
-        # Otherwise, just print the results to the screen
+        # Otherwise, just print the results to the screen.
         for result in results:
             print(result)
+            print()
 
 
 if __name__ == "__main__":
