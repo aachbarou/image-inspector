@@ -21,7 +21,7 @@ to explain the project confidently.
 
 ```
 R = 1 0 1 0 1 0 0 0    <- one byte (8 bits)
-    ^         ^
+    ^             ^
   MOST significant  LEAST significant
 ```
 

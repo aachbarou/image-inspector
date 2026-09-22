@@ -2,25 +2,6 @@
 metadata.py
 
 Extracts metadata (EXIF) from an image using PIL/Pillow.
-
-EXIF = Exchangeable Image File Format.  It is a standard that stores extra
-information *inside* the image file itself, written by the camera or phone
-that took the photo.  Common EXIF fields:
-
-  - GPS coordinates (where the photo was taken)
-  - Make / Model (which device took the photo)
-  - DateTimeOriginal (when the photo was taken)
-
-EXIF data is stored as a TIFF directory of (tag_id -> value) pairs.
-PIL parses this for us:  Image._getexif()  returns a dict where the keys
-are numeric tag IDs and the values are raw.  We translate the numeric IDs
-into human-readable names with PIL.ExifTags.TAGS.
-
-GPS is special: it lives inside a separate nested directory under the
-"GPSInfo" tag, and the coordinates are stored as  (Degrees, Minutes,
-Seconds)  rationals plus a North/South/East/West letter.  We convert that
-DMS format into a simple decimal number (the "Latitude / Longitude" that
-maps and GPS devices display).
 """
 
 from PIL import Image
@@ -29,19 +10,13 @@ from PIL.ExifTags import TAGS, GPSTAGS
 from utils import dms_to_decimal
 
 
-# Fall-back tags: these PIL versions / cameras may use a different tag name.
+# Fall-back tags used when a camera writes different tag names.
 GPS_INFO_TAG = "GPSInfo"
 DATE_TAGS = ("DateTimeOriginal", "DateTimeDigitized", "DateTime")
 
 
 def get_exif_dict(image):
-    """
-    Return the EXIF dictionary keyed by *human-readable* tag names.
-    If the image has no EXIF data, an empty dict is returned.
-
-    Note: _getexif() sometimes raises on corrupt files, so we wrap it in a
-    try/except and treat a failure as "no EXIF data".
-    """
+    """Return the image EXIF data keyed by human-readable tag names."""
     exif = {}
     try:
         raw = image._getexif()
@@ -59,22 +34,7 @@ def get_exif_dict(image):
 
 
 def get_gps_coordinates(exif):
-    """
-    Extract and convert the GPS data (if any) from the EXIF dict.
-
-    GPSInfo value looks like:  {1: 'N', 2: (32.0, 5.0, 11.86...), 3: 'E', ...}
-    where (1,2,3) = (LatRef, Lat, LonRef), (4,5,6) = (Lon, AltRef, Alt).
-
-      - tag 1 -> the latitude reference letter ('N' or 'S')
-      - tag 2 -> the latitude  as (degrees, minutes, seconds)
-      - tag 3 -> the longitude reference letter ('E' or 'W')
-      - tag 4 -> the longitude as (degrees, minutes, seconds)
-
-    Because dms_to_decimal returns signed values (negative for S / W), we
-    give them the correct sign for the reference direction.
-
-    Returns (lat, lon) as floats, or (None, None) when there is no GPS data.
-    """
+    """Extract the GPS coordinates from the EXIF data, if present."""
     if GPS_INFO_TAG not in exif:
         return None, None
 
@@ -95,10 +55,7 @@ def get_gps_coordinates(exif):
 
 
 def get_device(exif):
-    """
-    Return the camera/device brand and model, e.g. "NIKON CORPORATION /
-    NIKON D3200".  Returns "Unknown" when the image has no device tags.
-    """
+    """Return the camera brand and model from the EXIF data."""
     make = exif.get("Make")
     model = exif.get("Model")
 
@@ -110,16 +67,7 @@ def get_device(exif):
 
 
 def get_datetime(exif):
-    """
-    Return the capture date/time in a readable format.
-
-    EXIF stores it as the string 'YYYY:MM:DD HH:MM:SS' (colons, not dashes,
-    because JPEG has no way to escape colons).  We swap them for dashes so
-    the output looks like a normal date:
-        '2014:08:28 04:17:38'  ->  '2014-08-28 04:17:38'
-
-    Returns "Unknown" when no date is present in the EXIF data.
-    """
+    """Return the capture date and time from the EXIF data."""
     for tag in DATE_TAGS:
         value = exif.get(tag)
         if value:
@@ -128,16 +76,10 @@ def get_datetime(exif):
 
 
 def run_metadata_analysis(image_path):
-    """
-    Main entry point for the metadata analysis.
-
-    Returns a single human-readable string that summarizes everything we
-    found.  The CLI prints this string, or saves it to a file.
-    """
+    """Perform the full metadata analysis on an image and return the report."""
     image = Image.open(image_path)
     exif = get_exif_dict(image)
 
-    # Build a friendly report.  Each line is one piece of metadata.
     lines = ["Metadata report for: %s" % image_path]
     lines.append("----------------------------------------")
 
@@ -164,7 +106,7 @@ def run_metadata_analysis(image_path):
     # 3) Date and time the photo was taken
     lines.append("Date        : %s" % get_datetime(exif))
 
-    # 4) Anything else worth showing (keeps it useful, not required).
+    # 4) Additional useful EXIF fields
     for tag in ("Software", "ExifImageWidth", "ExifImageHeight",
                 "Orientation", "ExposureTime", "FNumber", "ISOSpeedRatings"):
         if tag in exif:

@@ -2,19 +2,6 @@
 cli.py
 
 Builds the command-line interface for the image-inspector tool.
-
-The program is used like this:
-
-    image-inspector [-m] [-s] [-o FILE] IMAGE
-
-Where the flags mean:
-    -m  run the metadata analysis
-    -s  run the steganography analysis
-    -o  save the results into a file instead of printing them
-
-argparse gives us argument parsing, the --help flag and error messages for
-free.  We customize the --help screen so it looks like the one described in
-the project subject.
 """
 
 import argparse
@@ -22,7 +9,7 @@ import sys as _sys
 
 PROG = "image-inspector"
 
-# This exact layout is the help screen described in the project subject.
+# Help screen layout described in the project subject.
 HELP_TEXT = (
     "Welcome to Image Inspector\n"
     "\n"
@@ -35,33 +22,21 @@ HELP_TEXT = (
 
 
 class CustomHelpParser(argparse.ArgumentParser):
-    """
-    An ArgumentParser that prints our custom help screen instead of the
-    default one.  Everything else (parsing, errors, exit codes) still works
-    exactly like a normal argparse parser.
-    """
+    """ArgumentParser that prints a custom help screen."""
 
     def format_help(self):
+        """Return the custom help text."""
         return HELP_TEXT
 
     def exit(self, status=0, message=None):
+        """Print the error message (if any) and exit with the given status."""
         if message:
             self._print_message(message, _sys.stderr)
         raise SystemExit(status)
 
 
 def build_parser():
-    """
-    Create and return the configured argument parser.
-
-    The parser understands:
-        IMAGE            a positional argument: the path to the image file
-        -m/--metadata    run the metadata analysis     (store_true flag)
-        -s/--steganography run the stego analysis      (store_true flag)
-        -o/--output FILE save the results into a file (stores a string)
-
-    Returns a CustomHelpParser that is ready to parse_args().
-    """
+    """Create and return the configured argument parser."""
     parser = CustomHelpParser(
         prog=PROG,
         description="A tool for inspecting images (metadata and steganography analysis).",
